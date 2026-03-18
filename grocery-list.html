@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Grocery">
+<title>My Grocery List</title>
+<style>
+  /* ── System fonts only — no external requests ── */
+  :root {
+    --bg:           #f4efe6;
+    --card:         #fffefb;
+    --green:        #2d6a4f;
+    --green-light:  #52b788;
+    --green-pale:   #d8f3dc;
+    --accent:       #e76f51;
+    --text:         #1c1c1e;
+    --muted:        #8e8e93;
+    --border:       #ddd8cc;
+    --shadow:       0 1px 8px rgba(0,0,0,0.07);
+    --radius:       14px;
+    --font:         -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    min-height: 100vh;
+    padding: 20px 14px 90px;
+  }
+  .app { max-width: 480px; margin: 0 auto; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 22px; }
+  .cart-icon { font-size: 2rem; display: block; margin-bottom: 4px; }
+  header h1 { font-size: 1.75rem; font-weight: 700; color: var(--green); letter-spacing: -0.5px; }
+  header p  { color: var(--muted); font-size: 0.82rem; margin-top: 3px; }
+
+  /* Add row */
+  .add-section {
+    background: var(--card); border-radius: var(--radius);
+    padding: 14px; box-shadow: var(--shadow); margin-bottom: 12px;
+    border: 1px solid var(--border);
+  }
+  .add-row { display: flex; gap: 7px; flex-wrap: wrap; }
+  .add-row input {
+    flex: 1; min-width: 120px; padding: 11px 13px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: var(--font); font-size: 16px; /* 16px prevents iOS zoom */
+    background: var(--bg); color: var(--text); outline: none;
+  }
+  .add-row input:focus { border-color: var(--green-light); }
+  .add-row input::placeholder { color: var(--muted); }
+  .add-row select {
+    padding: 11px 7px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: var(--font); font-size: 13px;
+    background: var(--bg); color: var(--text); outline: none; max-width: 145px;
+  }
+  .btn-add {
+    padding: 11px 18px; background: var(--green); color: #fff; border: none;
+    border-radius: 10px; font-size: 1.2rem; font-weight: 700; cursor: pointer;
+    touch-action: manipulation;
+  }
+  .btn-add:active { opacity: 0.8; }
+
+  /* Search */
+  .search-wrap { position: relative; margin-bottom: 11px; }
+  .search-wrap input {
+    width: 100%; padding: 10px 13px 10px 34px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: var(--font); font-size: 16px;
+    background: var(--card); color: var(--text); outline: none;
+  }
+  .search-wrap input:focus { border-color: var(--green-light); }
+  .search-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; pointer-events: none;
+  }
+
+  /* Toolbar */
+  .toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; gap: 6px; flex-wrap: wrap; }
+  .count-badge { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+  .count-badge b { color: var(--green); font-weight: 700; }
+  .toolbar-right { display: flex; gap: 5px; flex-wrap: wrap; }
+  .tbtn {
+    padding: 6px 11px; border-radius: 8px; font-family: var(--font); font-size: 0.75rem;
+    font-weight: 600; cursor: pointer; touch-action: manipulation; border: 1.5px solid var(--border);
+    background: var(--card); color: var(--text);
+  }
+  .tbtn.sort-active { background: var(--green-pale); border-color: var(--green-light); color: var(--green); }
+  .tbtn.reset { border-color: #c3e6cb; background: #f0fff4; color: var(--green); }
+  .tbtn.danger { border-color: #fcd5c8; background: #fff5f2; color: var(--accent); }
+
+  /* Category tabs */
+  .cat-tabs { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .cat-tabs::-webkit-scrollbar { display: none; }
+  .cat-tab {
+    padding: 6px 13px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: var(--card); font-family: var(--font); font-size: 0.75rem;
+    font-weight: 600; cursor: pointer; color: var(--muted); white-space: nowrap;
+    touch-action: manipulation;
+  }
+  .cat-tab.active { background: var(--green); border-color: var(--green); color: #fff; }
+
+  /* List */
+  .list-section { display: flex; flex-direction: column; gap: 6px; }
+  .sec-label {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); margin: 8px 0 2px 3px;
+  }
+  .item-card {
+    background: var(--card); border: 1.5px solid var(--border); border-radius: 12px;
+    padding: 12px 13px; display: flex; align-items: center; gap: 11px;
+    box-shadow: var(--shadow);
+  }
+  .item-card.sel { border-color: var(--green-light); background: var(--green-pale); }
+  .item-card.sel .iname { font-weight: 600; color: var(--green); }
+  .chk {
+    width: 22px; height: 22px; border: 2px solid var(--border); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; background: #fff; font-size: 13px; cursor: pointer;
+    touch-action: manipulation; user-select: none;
+  }
+  .item-card.sel .chk { background: var(--green); border-color: var(--green); color: #fff; }
+  .iinfo { flex: 1; min-width: 0; }
+  .iname { font-size: 0.92rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icat  { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .cdot  { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .del {
+    background: none; border: none; cursor: pointer; color: #ccc; font-size: 1rem;
+    padding: 5px 7px; border-radius: 6px; flex-shrink: 0; touch-action: manipulation;
+  }
+  .del:active { color: var(--accent); }
+
+  .empty { text-align: center; padding: 44px 20px; color: var(--muted); }
+  .empty .eicon { font-size: 2.4rem; display: block; margin-bottom: 10px; }
+  .empty p { font-size: 0.9rem; line-height: 1.5; }
+
+  /* Bottom bar */
+  .sum-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--green); color: #fff;
+    padding: 13px 20px; display: flex; justify-content: space-between; align-items: center;
+    transform: translateY(110%); transition: transform 0.28s ease; z-index: 999;
+  }
+  .sum-bar.show { transform: translateY(0); }
+  .sum-bar .st { font-size: 0.82rem; font-weight: 600; }
+  .sum-bar .sc { font-size: 1rem; font-weight: 700; }
+  .unsel-btn {
+    background: rgba(255,255,255,0.22); border: none; border-radius: 8px; color: #fff;
+    padding: 7px 13px; font-family: var(--font); font-size: 0.78rem; font-weight: 600;
+    cursor: pointer; touch-action: manipulation;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <span class="cart-icon">🛒</span>
+    <h1>My Grocery List</h1>
+    <p>Tap to select · filter by category · sort selected to top</p>
+  </header>
+
+  <div class="add-section">
+    <div class="add-row">
+      <input type="text" id="itemInput" placeholder="Add item..." maxlength="80" autocomplete="off" autocorrect="off" />
+      <select id="catSelect">
+        <option value="vegetables">🥬 Vegetables</option>
+        <option value="fruits">🍎 Fruits</option>
+        <option value="dals">🫘 Dals & Lentils</option>
+        <option value="spices">🌶️ Spices</option>
+        <option value="flours">🌾 Flours & Grains</option>
+        <option value="oils">🫙 Oils & Ghee</option>
+        <option value="dairy">🥛 Dairy</option>
+        <option value="pantry">🥫 Pantry</option>
+        <option value="snacks">🍪 Snacks</option>
+        <option value="beverages">☕ Beverages</option>
+        <option value="household">🧹 Household</option>
+        <option value="other">📦 Other</option>
+      </select>
+      <button class="btn-add" onclick="addItem()">＋</button>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search items..." oninput="render()" autocomplete="off" />
+  </div>
+
+  <div class="toolbar">
+    <div class="count-badge" id="countBadge"></div>
+    <div class="toolbar-right">
+      <button class="tbtn" id="sortBtn" onclick="toggleSort()">⬆ Selected First</button>
+      <button class="tbtn reset" onclick="resetDefaults()">↺ Reset</button>
+      <button class="tbtn danger" onclick="clearAll()">✕ Clear</button>
+    </div>
+  </div>
+
+  <div class="cat-tabs" id="catTabs"></div>
+  <div class="list-section" id="itemList"></div>
+</div>
+
+<div class="sum-bar" id="sumBar">
+  <div><div class="st">Ready to shop</div><div class="sc" id="sumCount"></div></div>
+  <button class="unsel-btn" onclick="unselectAll()">Unselect All</button>
+</div>
+
+<script>
+const CAT_META = {
+  vegetables: { label: '🥬 Vegetables',     color: '#40916c' },
+  fruits:     { label: '🍎 Fruits',         color: '#ff6b6b' },
+  dals:       { label: '🫘 Dals & Lentils', color: '#9b72cf' },
+  spices:     { label: '🌶️ Spices',         color: '#e85d04' },
+  flours:     { label: '🌾 Flours & Grains',color: '#c49a00' },
+  oils:       { label: '🫙 Oils & Ghee',    color: '#f4a261' },
+  dairy:      { label: '🥛 Dairy',          color: '#4a9eca' },
+  pantry:     { label: '🥫 Pantry',         color: '#888' },
+  snacks:     { label: '🍪 Snacks',         color: '#f9844a' },
+  beverages:  { label: '☕ Beverages',      color: '#6d4c41' },
+  household:  { label: '🧹 Household',      color: '#aaa' },
+  other:      { label: '📦 Other',          color: '#999' },
+};
+
+const DEFAULTS = [
+  // Vegetables
+  ['Tomato','vegetables'],['Drum Stick','vegetables'],['Mint','vegetables'],
+  ['Chamadumpa','vegetables'],['Green Peas','vegetables'],['Eggplant','vegetables'],
+  ['Okra','vegetables'],['Tindora','vegetables'],['Potato','vegetables'],
+  ['Beans','vegetables'],['Onion (2 bags)','vegetables'],['Spinach','vegetables'],
+  ['Bell Pepper','vegetables'],['Coriander','vegetables'],['Curry Leaves','vegetables'],
+  ['Bitter Gourd (2)','vegetables'],['Sorakayi','vegetables'],['Thotakora','vegetables'],
+  ['Gongura','vegetables'],['Raw Banana','vegetables'],['Green Mirchi','vegetables'],
+  ['Neem Flower','vegetables'],['Coconut Water','vegetables'],
+  // Fruits
+  ['Mango','fruits'],
+  // Dals
+  ['Chana Dal - Putnalu','dals'],['Urad Dal','dals'],['Toor Dal','dals'],
+  ['Moong Dal - Pesara Pappu','dals'],['Chana Dal','dals'],['Urad Dal - Split','dals'],
+  ['Chick Peas','dals'],['White Peas','dals'],
+  // Spices
+  ['Jeera','spices'],['Mustard (In)','spices'],['Inguva','spices'],
+  ['Coriander Powder','spices'],['Red Mirchi','spices'],['Jeera Powder','spices'],
+  ['Chat Masala','spices'],['Chole Masala','spices'],['Pani Puri Masala','spices'],
+  ['Miriyalu','spices'],['Turmeric','spices'],['Bay Leaf','spices'],
+  ['Cloves','spices'],['Fennel Seeds','spices'],['Collangi Seeds','spices'],
+  ['Vamu','spices'],['Siddi - Biryani Powder','spices'],['Salt','spices'],
+  // Flours & Grains
+  ['Rice Flour','flours'],['Besan','flours'],['Maida','flours'],
+  ['Corn Flour','flours'],['Murmura','flours'],['Rice','flours'],
+  ['Wheat Flour','flours'],['Oats','flours'],['Wheat Ravva','flours'],
+  ['Idli Ravva','flours'],['Poha','flours'],['Upma Ravva','flours'],
+  ['Semiya','flours'],['Rice Ravva','flours'],['Sabu Dhana','flours'],['Peanuts','flours'],
+  // Oils & Ghee
+  ['Deepam Oil','oils'],['Peanut Oil','oils'],['Olive Oil','oils'],
+  ['Ghee','oils'],['Cow Ghee','oils'],
+  // Dairy
+  ['Yogurt','dairy'],['Paneer','dairy'],
+  // Pantry
+  ['Sugar','pantry'],['Jaggery','pantry'],['Honey','pantry'],
+  // Beverages
+  ['Tea Powder','beverages'],['Coffee Powder','beverages'],
+  // Snacks
+  ['Chikki','snacks'],['Biscuits','snacks'],['Snacks','snacks'],['Small Samosa','snacks'],
+  // Household
+  ['Match Box','household'],
+];
+
+function mkDefaults() {
+  return DEFAULTS.map(([name, cat], i) => ({ id: i+1, name, cat, sel: false }));
+}
+
+/* ── Storage: try localStorage, fall back to in-memory ── */
+let _mem = null;
+function storageGet(k) {
+  try { return localStorage.getItem(k); } catch(e) { return _mem; }
+}
+function storageSet(k, v) {
+  try { localStorage.setItem(k, v); } catch(e) { _mem = v; }
+}
+
+let items, sortOn = false, filter = 'all', nid;
+
+function loadItems() {
+  const raw = storageGet('gl3');
+  if (raw) { try { items = JSON.parse(raw); return; } catch(e) {} }
+  items = mkDefaults();
+  storageSet('gl3', JSON.stringify(items));
+}
+
+loadItems();
+nid = Math.max(0, ...items.map(i => i.id)) + 1;
+
+function save() { storageSet('gl3', JSON.stringify(items)); }
+
+/* ── Actions ── */
+function addItem() {
+  const inp = document.getElementById('itemInput');
+  const name = inp.value.trim();
+  if (!name) { inp.focus(); return; }
+  const cat = document.getElementById('catSelect').value;
+  items.push({ id: nid++, name, cat, sel: false });
+  inp.value = ''; inp.focus();
+  save(); render();
+}
+
+document.getElementById('itemInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addItem();
+});
+
+function toggleSel(id) {
+  const it = items.find(i => i.id === id);
+  if (it) { it.sel = !it.sel; save(); render(); }
+}
+
+function delItem(id) {
+  if (!confirm('Remove this item?')) return;
+  items = items.filter(i => i.id !== id);
+  save(); render();
+}
+
+function toggleSort() {
+  sortOn = !sortOn;
+  document.getElementById('sortBtn').classList.toggle('sort-active', sortOn);
+  render();
+}
+
+function setFilter(cat) { filter = cat; render(); }
+
+function clearAll() {
+  if (!items.length) return;
+  if (!confirm('Clear all items?\nTap Reset to restore the default list.')) return;
+  items = []; save(); render();
+}
+
+function resetDefaults() {
+  if (!confirm('Restore the full default grocery list?')) return;
+  items = mkDefaults(); nid = items.length + 1;
+  save(); render();
+}
+
+function unselectAll() {
+  items.forEach(i => i.sel = false);
+  save(); render();
+}
+
+/* ── Render ── */
+function render() {
+  renderTabs(); renderList(); renderSummary(); renderCount();
+}
+
+function renderTabs() {
+  const cats = ['all', ...Object.keys(CAT_META).filter(c => items.some(i => i.cat === c))];
+  document.getElementById('catTabs').innerHTML = cats.map(c => {
+    const lbl = c === 'all' ? '✦ All' : (CAT_META[c]?.label || c);
+    return `<button class="cat-tab${filter===c?' active':''}" onclick="setFilter('${c}')">${lbl}</button>`;
+  }).join('');
+}
+
+function renderList() {
+  const el = document.getElementById('itemList');
+  const q  = document.getElementById('searchInput').value.trim().toLowerCase();
+  let vis  = filter === 'all' ? [...items] : items.filter(i => i.cat === filter);
+  if (q) vis = vis.filter(i => i.name.toLowerCase().includes(q));
+  if (sortOn) vis.sort((a,b) => b.sel - a.sel);
+
+  if (!vis.length) {
+    el.innerHTML = `<div class="empty"><span class="eicon">🛍️</span><p>${
+      q ? 'No items match your search.' :
+      !items.length ? 'List is empty.<br>Add an item above or tap ↺ Reset.' :
+      'No items in this category.'
+    }</p></div>`;
+    return;
+  }
+
+  let html = '';
+  if (sortOn && vis.some(i=>i.sel) && vis.some(i=>!i.sel)) {
+    const s = vis.filter(i=>i.sel), r = vis.filter(i=>!i.sel);
+    html = `<div class="sec-label">✓ Selected (${s.length})</div>` + s.map(card).join('') +
+           `<div class="sec-label">Remaining (${r.length})</div>` + r.map(card).join('');
+  } else {
+    html = vis.map(card).join('');
+  }
+  el.innerHTML = html;
+}
+
+function card(it) {
+  const m = CAT_META[it.cat] || CAT_META.other;
+  return `<div class="item-card${it.sel?' sel':''}">
+    <div class="chk" onclick="toggleSel(${it.id})">${it.sel?'✓':''}</div>
+    <div class="iinfo">
+      <div class="iname">${x(it.name)}</div>
+      <div class="icat"><span class="cdot" style="background:${m.color}"></span>${m.label}</div>
+    </div>
+    <button class="del" onclick="delItem(${it.id})">✕</button>
+  </div>`;
+}
+
+function renderSummary() {
+  const n = items.filter(i=>i.sel).length;
+  const bar = document.getElementById('sumBar');
+  document.getElementById('sumCount').textContent = `${n} item${n!==1?'s':''} selected`;
+  bar.classList.toggle('show', n > 0);
+}
+
+function renderCount() {
+  const t = items.length, s = items.filter(i=>i.sel).length;
+  document.getElementById('countBadge').innerHTML =
+    `<b>${t}</b> item${t!==1?'s':''}${s?` · <b>${s}</b> selected`:''}`;
+}
+
+function x(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+render();
+</script>
+</body>
+</html>
